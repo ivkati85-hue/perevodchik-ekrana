@@ -307,7 +307,27 @@ class OverlayService : Service() {
             }
     }
 
+    private var lastService = ""
+
     private fun translateAll(pieces: List<Piece>) {
+        // сначала онлайн (точнее), в отдельном потоке
+        Thread {
+            val res = try { OnlineTranslate.translate(pieces.map { it.zh }) } catch (_: Exception) { null }
+            main.post {
+                if (res != null) {
+                    res.first.forEachIndexed { i, t -> pieces[i].ru = t }
+                    lastService = res.second
+                    showOverlay(pieces.filter { it.ru.isNotEmpty() })
+                    done()
+                } else {
+                    translateOffline(pieces)
+                }
+            }
+        }.start()
+    }
+
+    private fun translateOffline(pieces: List<Piece>) {
+        lastService = "офлайн (менее точно)"
         val tasks: List<Task<String>> = pieces.map { p ->
             translator.translate(p.zh).addOnSuccessListener { p.ru = it }
         }
@@ -316,9 +336,10 @@ class OverlayService : Service() {
             if (pieces.all { it.ru.isEmpty() }) {
                 done()
                 val msg = failed?.exception?.message ?: ""
-                toast("Нет словаря. Откройте приложение и нажмите «Скачать словарь» (с VPN). $msg")
+                toast("Нет интернета и словаря. Откройте приложение и нажмите «Скачать словарь». $msg")
                 return@addOnCompleteListener
             }
+            toast("Нет интернета — перевод офлайн, менее точный")
             showOverlay(pieces.filter { it.ru.isNotEmpty() })
             done()
         }
@@ -407,7 +428,7 @@ class OverlayService : Service() {
             setTextColor(Color.BLACK)
         })
         panel.addView(TextView(this).apply {
-            text = p.zh
+            text = p.zh + "\n\nПеревод: " + lastService
             textSize = 15f
             setTextColor(Color.GRAY)
             setPadding(0, dp(10f), 0, dp(10f))
