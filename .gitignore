@@ -1,0 +1,8 @@
+build/
+.gradle/
+local.properties
+*.apk
+*.zip
+*.ps1
+*.cmd
+apk-serve.py
