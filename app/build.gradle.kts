@@ -14,8 +14,21 @@ android {
         versionName = "1.2"
         ndk { abiFilters += listOf("arm64-v8a") }
     }
+    // постоянный ключ подписи — чтобы обновления ставились поверх старой версии
+    signingConfigs {
+        create("app") {
+            storeFile = rootProject.file("signing/app.keystore")
+            storePassword = "perevod123"
+            keyAlias = "app"
+            keyPassword = "perevod123"
+        }
+    }
     buildTypes {
-        release { isMinifyEnabled = false }
+        getByName("debug") { signingConfig = signingConfigs.getByName("app") }
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("app")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

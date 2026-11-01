@@ -1,0 +1,43 @@
+name: Сборка APK
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
+      - name: Собрать
+        run: gradle assembleRelease --no-daemon
+
+      - name: Переименовать
+        run: cp app/build/outputs/apk/release/app-release.apk Perevodchik-ekrana.apk
+
+      - name: Выложить релиз
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Perevodchik-ekrana.apk
+          name: Переводчик экрана ${{ github.ref_name }}
+
+      - name: Сохранить файл сборки
+        uses: actions/upload-artifact@v4
+        with:
+          name: Perevodchik-ekrana
+          path: Perevodchik-ekrana.apk
